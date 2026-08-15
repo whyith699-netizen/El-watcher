@@ -1,0 +1,22 @@
+[Unit]
+Description=EL Watcher — E-Learning Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/disk2/Code/el-watcher
+EnvironmentFile=/mnt/disk2/Code/el-watcher/.env
+ExecStart=/mnt/disk2/Code/el-watcher/venv/bin/node src/monitor.js
+# Atau langsung Node sistem (venv sudah include):
+# ExecStart=/usr/bin/node src/monitor.js
+Restart=on-failure
+RestartSec=30
+# Resource guard: max 5 menit per run
+TimeoutStartSec=300
+
+# Playwright butuh /dev/shm untuk Chromium shared memory
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

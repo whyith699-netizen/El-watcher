@@ -1,0 +1,11 @@
+[Unit]
+Description=EL Watcher Health Check — daily digest
+
+[Service]
+Type=oneshot
+WorkingDirectory=/mnt/disk2/Code/el-watcher
+EnvironmentFile=/mnt/disk2/Code/el-watcher/.env
+ExecStart=/usr/bin/node src/health-digest.js
+
+[Install]
+WantedBy=default.target

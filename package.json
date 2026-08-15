@@ -1,0 +1,17 @@
+{
+  "name": "el-watcher",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "E-learning (Moodle) assignment & UH monitor with Telegram notifications",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "monitor": "node src/monitor.js",
+    "monitor:dry": "node src/monitor.js --dry-run",
+    "test": "node --test tests/",
+    "debug": "node src/debug-scrape.js"
+  },
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}

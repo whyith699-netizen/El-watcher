@@ -1,0 +1,72 @@
+name: Monitor E-Learning
+
+on:
+  schedule:
+    # UTC. Asia/Jakarta = UTC+7. Jam sekolah 06-18 WIB Sen-Sab
+    # = 23:00 UTC (hari sebelumnya) s/d 11:00 UTC. Split dua range:
+    # 23:00-23:59 UTC (Min-Sab UTC) + 00:00-11:00 UTC (Sen-Sab UTC)
+    - cron: "*/5 23 * * 0-5"
+    - cron: "*/5 0-10 * * 1-6"
+  workflow_dispatch:
+
+concurrency:
+  group: elearning-monitor
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: npm
+
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      - name: Restore state
+        run: |
+          mkdir -p state
+          # State di-branch khusus 'state', restore sebelum run
+          if git ls-remote --heads origin state | grep -q state; then
+            git fetch origin state --depth=1
+            git checkout origin/state -- state/state.json 2>/dev/null || echo '{"accounts":{}}' > state/state.json
+          else
+            echo '{"accounts":{}}' > state/state.json
+          fi
+
+      - name: Run monitor
+        env:
+          ELEARNING_BASE_URL: https://elearning.sma1klaten.sch.id
+          ELEARNING_USER_A: ${{ secrets.ELEARNING_USER_A }}
+          ELEARNING_PASS_A: ${{ secrets.ELEARNING_PASS_A }}
+          ELEARNING_USER_B: ${{ secrets.ELEARNING_USER_B }}
+          ELEARNING_PASS_B: ${{ secrets.ELEARNING_PASS_B }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TZ: Asia/Jakarta
+          FORCE_RUN: "1"
+        run: npm run monitor
+
+      - name: Commit state (hanya jika berubah)
+        run: |
+          git config user.name "el-watcher-bot"
+          git config user.email "bot@el-watcher.local"
+          git add state/state.json
+          if git diff --cached --quiet; then
+            echo "State tidak berubah, skip commit"
+          else
+            git commit -m "state: update $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            git push origin HEAD:state || {
+              git fetch origin state --depth=1
+              git rebase origin/state
+              git push origin HEAD:state
+            }
+          fi

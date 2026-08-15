@@ -1,0 +1,15 @@
+[Unit]
+Description=EL Watcher Timer — run every 5 minutes during school hours
+Requires=el-watcher.service
+
+[Timer]
+# Setiap 5 menit, dengan jitter ≤60s supaya tidak semua CI/CD trigger bersamaan
+OnBootSec=30
+OnUnitActiveSec=5min
+RandomizedDelaySec=45
+
+# Passthrough schedule check di dalam script (Sen-Sab 06-18 WIB)
+# systemd timer tidak bisa cek kalender Indonesia → di-handle di monitor.js
+
+[Install]
+WantedBy=timers.target

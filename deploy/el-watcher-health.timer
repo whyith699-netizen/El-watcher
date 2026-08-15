@@ -1,0 +1,10 @@
+[Unit]
+Description=EL Watcher Health Digest — daily at 19:00 WIB
+Requires=el-watcher-health.service
+
+[Timer]
+OnCalendar=19:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
