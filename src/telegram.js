@@ -1,6 +1,7 @@
 // Telegram Notifier (PRD FR-08).
 import { logger } from "./redact.js";
 import { TELEGRAM } from "./config.js";
+import fs from "fs";
 
 const API = "https://api.telegram.org";
 
@@ -22,6 +23,33 @@ async function send(text, opts = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok || data.ok !== true) {
     logger.error("telegram: kirim gagal", { status: res.status });
+    return { ok: false, status: res.status };
+  }
+  return { ok: true };
+}
+
+export async function sendPhoto(photoPath, caption = "", opts = {}) {
+  if (!TELEGRAM.token || !TELEGRAM.chatId) {
+    logger.warn("telegram: token/chatId kosong, sendPhoto dilewati");
+    return { ok: false, skipped: true };
+  }
+  if (!fs.existsSync(photoPath)) {
+    logger.error(`telegram: file foto tidak ditemukan: ${photoPath}`);
+    return { ok: false, error: "file_not_found" };
+  }
+  const formData = new FormData();
+  formData.append("chat_id", TELEGRAM.chatId);
+  const fileBlob = new Blob([fs.readFileSync(photoPath)]);
+  formData.append("photo", fileBlob, "screenshot.png");
+  if (caption) formData.append("caption", caption);
+
+  const res = await fetch(`${API}/bot${TELEGRAM.token}/sendPhoto`, {
+    method: "POST",
+    body: formData,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok !== true) {
+    logger.error("telegram: sendPhoto gagal", { status: res.status, data });
     return { ok: false, status: res.status };
   }
   return { ok: true };
