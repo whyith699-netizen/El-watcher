@@ -5,9 +5,11 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+User=miro
+Group=users
 WorkingDirectory=/mnt/disk2/Code/el-watcher
 EnvironmentFile=/mnt/disk2/Code/el-watcher/.env
-ExecStart=/mnt/disk2/Code/el-watcher/venv/bin/node src/monitor.js
+ExecStart=/usr/bin/node src/monitor.js
 # Atau langsung Node sistem (venv sudah include):
 # ExecStart=/usr/bin/node src/monitor.js
 Restart=on-failure
