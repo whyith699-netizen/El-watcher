@@ -1,4 +1,5 @@
 // Orchestrator single-shot: login → scrape /my/ + calendar upcoming → normalize → diff → notify → save state.
+import 'dotenv/config';
 import { chromium } from 'playwright';
 import { getConfig } from './config.js';
 import { logger, redact } from './redact.js';
@@ -32,14 +33,17 @@ async function checkAccount(browser, account, globalState, cfg) {
   const page = await context.newPage();
 
   try {
-    // ── Login ──
+    // ── Login via JS direct submit (bypass hidden form issues) ──
     await page.goto(`${cfg.baseUrl}/login/index.php`, { waitUntil: 'domcontentloaded', timeout: cfg.net.navTimeoutMs });
-    await page.fill('input#username', account.username);
-    await page.fill('input#password', account.password);
-    await Promise.all([
-      page.waitForLoadState('domcontentloaded'),
-      page.click('button#loginbtn, input#loginbtn'),
-    ]);
+    await page.evaluate(([u, p]) => {
+      const form = document.querySelector('form#login, form#menu-form-login');
+      if (!form) return;
+      const uField = form.querySelector('input[name="username"]');
+      const pField = form.querySelector('input[name="password"]');
+      if (uField) uField.value = u;
+      if (pField) pField.value = p;
+      form.submit();
+    }, [account.username, account.password]);
     await page.waitForTimeout(2500);
 
     // Deteksi login gagal
