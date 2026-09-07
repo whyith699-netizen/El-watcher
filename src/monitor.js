@@ -1,116 +1,134 @@
-// Orchestrator single-shot: login → scrape /my/ + calendar upcoming → normalize → diff → notify → save state.
+// Orchestrator single-shot: login → scrape → normalize → diff → notify → save state.
 import 'dotenv/config';
 import { chromium } from 'playwright';
-import { getConfig } from './config.js';
+import { DRY_RUN, getConfig } from './config.js';
 import { logger, redact } from './redact.js';
 import { extractTimeline, extractCalendar, mergeSources } from './parser.js';
-import { normalizeTitle, parseMoodleDate, typeFromUrl, fingerprint, metadataHash, normalizeItem } from './normalize.js';
+import { parseMoodleDate, fingerprint, metadataHash, normalizeItem } from './normalize.js';
 import { applyChanges } from './changes.js';
 import { notifyEvent, notifyAlert } from './telegram.js';
 import { loadState, saveState } from './state.js';
 
+function timeToMinutes(value) {
+  const [hours, minutes = '0'] = String(value).split(':');
+  return Number(hours) * 60 + Number(minutes);
+}
+
 async function withinWindow(cfg) {
   if (process.env.FORCE_RUN === '1') return true;
-  const jakarta = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Jakarta' }));
-  const day = jakarta.getDay(); // 0=Sun
-  const hour = jakarta.getHours();
-  if (day === 0) return false;
-  const w = cfg.window;
-  if (w.overrides) {
-    for (const ov of w.overrides) {
-      if (ov.days.includes(day)) return hour >= parseInt(ov.start) && hour < parseInt(ov.end);
-    }
-  }
-  return hour >= parseInt(w.default.start) && hour < parseInt(w.default.end);
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: cfg.window.tz,
+    weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  const dayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const day = dayMap[values.weekday];
+  const current = Number(values.hour) * 60 + Number(values.minute);
+  const override = cfg.window.overrides?.find((item) => item.days.includes(day));
+  const activeWindow = override ?? (cfg.window.default.days.includes(day) ? cfg.window.default : null);
+  if (!activeWindow) return false;
+  return current >= timeToMinutes(activeWindow.start) && current < timeToMinutes(activeWindow.end);
 }
 
 async function checkAccount(browser, account, globalState, cfg) {
   const nowIso = new Date().toISOString();
   const prevItems = globalState.items?.filter((i) => i.accountId === account.id) ?? [];
   const failStreak = globalState.accounts?.[account.id]?.meta?.failStreak ?? 0;
-
   const context = await browser.newContext({ userAgent: cfg.userAgent });
   const page = await context.newPage();
 
   try {
-    // ── Login via JS direct submit (bypass hidden form issues) ──
     await page.goto(`${cfg.baseUrl}/login/index.php`, { waitUntil: 'domcontentloaded', timeout: cfg.net.navTimeoutMs });
-    await page.evaluate(([u, p]) => {
+    const formFound = await page.evaluate(([u, p]) => {
       const form = document.querySelector('form#login, form#menu-form-login');
-      if (!form) return;
+      if (!form) return false;
       const uField = form.querySelector('input[name="username"]');
       const pField = form.querySelector('input[name="password"]');
-      if (uField) uField.value = u;
-      if (pField) pField.value = p;
+      if (!uField || !pField) return false;
+      uField.value = u;
+      pField.value = p;
       form.submit();
+      return true;
     }, [account.username, account.password]);
+    if (!formFound) throw Object.assign(new Error('LOGIN_FORM_NOT_FOUND'), { code: 'LOGIN_FORM_NOT_FOUND' });
     await page.waitForTimeout(2500);
 
-    // Deteksi login gagal
     if (page.url().includes('/login/') || await page.$('.errorbox, .loginerrors, [role="alert"]')) {
       throw Object.assign(new Error('LOGIN_FAILED'), { code: 'LOGIN_FAILED' });
     }
 
-    // ── Scrape /my/ ──
     await page.goto(`${cfg.baseUrl}/my/`, { waitUntil: 'domcontentloaded', timeout: cfg.net.navTimeoutMs });
     await page.waitForTimeout(3500);
     const dashRaw = await extractTimeline(page);
 
-    // ── Scrape /calendar/view.php?view=upcoming ──
     await page.goto(`${cfg.baseUrl}/calendar/view.php?view=upcoming`, { waitUntil: 'domcontentloaded', timeout: cfg.net.navTimeoutMs });
     await page.waitForTimeout(2000);
     const calRaw = await extractCalendar(page);
 
-    // ── Merge + Normalize ──
     const merged = mergeSources(dashRaw, calRaw);
     const normalized = merged.map((raw) => {
       const item = normalizeItem(account.id, account.label, raw);
+      item.dueAt = parseMoodleDate(raw.dateText);
       item.fingerprint = fingerprint(item);
       item.metadataHash = metadataHash(item);
-      item.dueAt = parseMoodleDate(raw.dateText);
       return item;
     });
 
     logger.info(`[${account.id}] scraped: ${dashRaw.length} dashboard + ${calRaw.length} calendar → ${normalized.length} normalized`);
 
-    // ── Diff + sanity ──
-    const { events, newAccountState, guardBlocked } = applyChanges(
+    const result = applyChanges(
       { items: prevItems, accounts: globalState.accounts },
       account.id,
       normalized,
       cfg.sanity,
+      { notifyInitial: cfg.notifyInitial },
     );
 
-    if (guardBlocked) {
-      logger.warn(`[${account.id}] guard blocked — ${events[0]?.reason}`);
+    if (result.guardBlocked) {
+      logger.warn(`[${account.id}] guard blocked — ${result.events[0]?.reason}`);
+      if (!DRY_RUN && cfg.telegram.token && cfg.telegram.chatId) {
+        await notifyAlert(`Parser anomaly (${account.label}): ${result.events[0]?.reason}. State lama dipertahankan.`);
+      }
+    } else if (result.baselineCreated && !cfg.notifyInitial) {
+      logger.info(`[${account.id}] baseline dibuat (${normalized.length} item); notifikasi awal ditahan`);
     }
 
-    // ── Notify ──
-    if (!guardBlocked && cfg.telegram.token && cfg.telegram.chatId) {
-      for (const ev of events) {
-        const sent = await notifyEvent(ev, account.label, false);
-        if (!sent) logger.warn(`[${account.id}] telegram failed for ${ev.fingerprint}`);
+    if (DRY_RUN) {
+      logger.info(`[${account.id}] dry-run: ${result.events.length} event; Telegram dan state write dilewati`);
+    } else if (!result.guardBlocked && cfg.telegram.token && cfg.telegram.chatId) {
+      for (const event of result.events) {
+        const sent = await notifyEvent(event, account.label, false);
+        if (!sent?.ok) logger.warn(`[${account.id}] telegram failed for ${event.item?.fingerprint ?? 'unknown'}`);
       }
     }
 
     return {
       ok: true,
-      events,
-      newItems: normalized,
-      newAccountState: { ...newAccountState, meta: { failStreak: 0, lastSuccessAt: nowIso } },
+      events: result.events,
+      newAccountState: {
+        ...result.newAccountState,
+        meta: { ...(result.newAccountState.meta ?? {}), failStreak: 0, lastSuccessAt: nowIso },
+      },
     };
   } catch (err) {
     const code = err.code ?? 'UNKNOWN';
     logger.error(`[${account.id}] error: ${code} — ${err.message}`);
     const newFailStreak = failStreak + 1;
-    if (newFailStreak >= cfg.health.failThreshold && cfg.telegram.token && cfg.telegram.chatId) {
+    if (!DRY_RUN && newFailStreak >= cfg.health.failThreshold && cfg.telegram.token && cfg.telegram.chatId) {
       await notifyAlert(`Monitor gagal ${newFailStreak}x beruntun (${account.label}): ${code}`);
     }
     return {
       ok: false,
       events: [],
-      newItems: prevItems, // keep old items on error so state doesn't go empty
-      newAccountState: { meta: { failStreak: newFailStreak, lastError: code } },
+      newAccountState: {
+        items: prevItems,
+        meta: {
+          ...(globalState.accounts?.[account.id]?.meta ?? {}),
+          failStreak: newFailStreak,
+          lastError: code,
+          lastErrorAt: nowIso,
+        },
+      },
       error: code,
     };
   } finally {
@@ -120,14 +138,13 @@ async function checkAccount(browser, account, globalState, cfg) {
 
 async function main() {
   const cfg = getConfig();
-
   if (!cfg.accounts.length) {
-    logger.error('ELEARNING_ACCOUNTS kosong — tidak ada akun dikonfigurasi.');
+    logger.error('ELEARNING_ACCOUNTS kosong/tidak valid — tidak ada akun dikonfigurasi.');
     process.exit(1);
   }
 
   if (!(await withinWindow(cfg))) {
-    logger.info('Di luar jadwal sekolah (Sen-Sab 06–18 WIB). Skip. FORCE_RUN=1 untuk paksa.');
+    logger.info('Di luar jadwal sekolah. Skip. FORCE_RUN=1 untuk paksa.');
     process.exit(0);
   }
 
@@ -143,23 +160,24 @@ async function main() {
 
   let anyOk = false;
   for (const account of cfg.accounts) {
-    const res = await checkAccount(browser, account, globalState, cfg);
-    // Update global state
-    globalState.accounts[account.id] = res.newAccountState;
-    // Rebuild global items list from all accounts
-    globalState.items = Object.values(globalState.accounts).flatMap((a) => a.items ?? []);
-    if (res.ok) anyOk = true;
-    // Jeda antar akun: 3–5 detik
-    await new Promise((r) => setTimeout(r, 3000 + Math.random() * 2000));
+    const result = await checkAccount(browser, account, globalState, cfg);
+    globalState.accounts[account.id] = result.newAccountState;
+    globalState.items = Object.values(globalState.accounts).flatMap((value) => Array.isArray(value.items) ? value.items : []);
+    if (result.ok) anyOk = true;
+    await new Promise((resolve) => setTimeout(resolve, 3000 + Math.random() * 2000));
   }
 
   await browser.close();
-  await saveState(globalState);
+  if (DRY_RUN) {
+    logger.info('dry-run selesai; state tidak ditulis');
+  } else {
+    await saveState(globalState);
+  }
   logger.info(`selesai. anyOk=${anyOk}`);
   process.exit(anyOk ? 0 : 1);
 }
 
-main().catch((e) => {
-  logger.error(`FATAL: ${redact(e.stack ?? String(e.message))}`);
+main().catch((error) => {
+  logger.error(`FATAL: ${redact(error.stack ?? String(error.message))}`);
   process.exit(2);
 });
