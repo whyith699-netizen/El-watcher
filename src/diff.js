@@ -1,5 +1,4 @@
 // Diff & dedup — bandingkan item baru vs state lama (PRD FR-06).
-import { fingerprint, metadataHash } from "./normalize.js";
 
 // Field yang perubahannya = event "updated".
 const WATCHED_FIELDS = ["dueAt", "status", "availableFrom", "title", "course"];
@@ -27,15 +26,17 @@ export function diffItems(prevItems, nextItems, nowIso) {
       }
     }
   }
+
   for (const old of prevItems) {
     if (!next.has(old.fingerprint)) {
       events.push({ kind: "removed", item: old, changedFields: [], detectedAt: nowIso });
+    }
   }
-  }
+
   return events;
 }
 
-// Sanity guard: kembalikan {ok, reason} — false = tahan notif user, kirim alert parser.
+// Sanity guard: false = tahan notifikasi dan pertahankan state lama.
 export function sanityCheck(prevItems, nextItems, sanityCfg) {
   if (!prevItems.length) {
     return { ok: true, reason: "first-run" };
@@ -49,7 +50,8 @@ export function sanityCheck(prevItems, nextItems, sanityCfg) {
       return { ok: false, reason: `item turun drastis ${prevItems.length}→${nextItems.length}` };
     }
   }
-  const newCount = nextItems.filter((n) => !prevItems.some((p) => p.fingerprint === n.fingerprint)).length;
+  const prevFingerprints = new Set(prevItems.map((item) => item.fingerprint));
+  const newCount = nextItems.filter((item) => !prevFingerprints.has(item.fingerprint)).length;
   if (newCount > sanityCfg.maxNewBurst) {
     return { ok: false, reason: `${newCount} item baru sekaligus (>${sanityCfg.maxNewBurst})` };
   }
