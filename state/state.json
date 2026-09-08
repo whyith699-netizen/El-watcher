@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "accountId": "a",
+      "sourceClass": "XI-A",
+      "course": null,
+      "type": "other",
+      "title": "PRESENSI KEHADIRAN",
+      "status": null,
+      "availableFrom": null,
+      "dueAt": null,
+      "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=21017",
+      "fingerprint": "eb779f8db6158321",
+      "metadataHash": "cae7dd20140860a7"
+    },
+    {
+      "accountId": "a",
+      "sourceClass": "XI-A",
+      "course": null,
+      "type": "other",
+      "title": "PRESENSI HARIAN (Group XI-E / INF)",
+      "status": null,
+      "availableFrom": null,
+      "dueAt": null,
+      "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=18811",
+      "fingerprint": "2fab9c2132ca6b92",
+      "metadataHash": "3ffb3f961e19c943"
+    },
+    {
+      "accountId": "a",
+      "sourceClass": "XI-A",
+      "course": null,
+      "type": "other",
+      "title": "PRESENSI KELAS XI (Group Sejarah XI E)",
+      "status": null,
+      "availableFrom": null,
+      "dueAt": null,
+      "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=18303",
+      "fingerprint": "dde0b0ca10259022",
+      "metadataHash": "d3a57a0e8ae69608"
+    },
+    {
+      "accountId": "a",
+      "sourceClass": "XI-A",
+      "course": null,
+      "type": "other",
+      "title": "Daftar Hadir (Group Kelas XI E)",
+      "status": null,
+      "availableFrom": null,
+      "dueAt": null,
+      "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=19144",
+      "fingerprint": "5a0d909f13db1035",
+      "metadataHash": "6e52cb353c4d2da7"
+    },
+    {
+      "accountId": "a",
+      "sourceClass": "XI-A",
+      "course": null,
+      "type": "other",
+      "title": "Presensi (Group Kelas XI E)",
+      "status": null,
+      "availableFrom": null,
+      "dueAt": null,
+      "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=19129",
+      "fingerprint": "607401293c01c592",
+      "metadataHash": "24c18eb81f8fe1c5"
+    },
+    {
+      "accountId": "a",
+      "sourceClass": "XI-A",
+      "course": null,
+      "type": "other",
+      "title": "Attendance (Group KELAS XI E)",
+      "status": null,
+      "availableFrom": null,
+      "dueAt": null,
+      "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=23602",
+      "fingerprint": "43218b5b2b99590d",
+      "metadataHash": "8a987df185f084f2"
+    },
+    {
+      "accountId": "a",
+      "sourceClass": "XI-A",
+      "course": null,
+      "type": "other",
+      "title": "PRESENSI (Group XI E)",
+      "status": null,
+      "availableFrom": null,
+      "dueAt": null,
+      "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=18256",
+      "fingerprint": "b29bcab290a8f53a",
+      "metadataHash": "4fdea2e73433f1cd"
+    }
+  ],
+  "accounts": {
+    "a": {
+      "items": [
+        {
+          "accountId": "a",
+          "sourceClass": "XI-A",
+          "course": null,
+          "type": "other",
+          "title": "PRESENSI KEHADIRAN",
+          "status": null,
+          "availableFrom": null,
+          "dueAt": null,
+          "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=21017",
+          "fingerprint": "eb779f8db6158321",
+          "metadataHash": "cae7dd20140860a7"
+        },
+        {
+          "accountId": "a",
+          "sourceClass": "XI-A",
+          "course": null,
+          "type": "other",
+          "title": "PRESENSI HARIAN (Group XI-E / INF)",
+          "status": null,
+          "availableFrom": null,
+          "dueAt": null,
+          "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=18811",
+          "fingerprint": "2fab9c2132ca6b92",
+          "metadataHash": "3ffb3f961e19c943"
+        },
+        {
+          "accountId": "a",
+          "sourceClass": "XI-A",
+          "course": null,
+          "type": "other",
+          "title": "PRESENSI KELAS XI (Group Sejarah XI E)",
+          "status": null,
+          "availableFrom": null,
+          "dueAt": null,
+          "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=18303",
+          "fingerprint": "dde0b0ca10259022",
+          "metadataHash": "d3a57a0e8ae69608"
+        },
+        {
+          "accountId": "a",
+          "sourceClass": "XI-A",
+          "course": null,
+          "type": "other",
+          "title": "Daftar Hadir (Group Kelas XI E)",
+          "status": null,
+          "availableFrom": null,
+          "dueAt": null,
+          "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=19144",
+          "fingerprint": "5a0d909f13db1035",
+          "metadataHash": "6e52cb353c4d2da7"
+        },
+        {
+          "accountId": "a",
+          "sourceClass": "XI-A",
+          "course": null,
+          "type": "other",
+          "title": "Presensi (Group Kelas XI E)",
+          "status": null,
+          "availableFrom": null,
+          "dueAt": null,
+          "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=19129",
+          "fingerprint": "607401293c01c592",
+          "metadataHash": "24c18eb81f8fe1c5"
+        },
+        {
+          "accountId": "a",
+          "sourceClass": "XI-A",
+          "course": null,
+          "type": "other",
+          "title": "Attendance (Group KELAS XI E)",
+          "status": null,
+          "availableFrom": null,
+          "dueAt": null,
+          "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=23602",
+          "fingerprint": "43218b5b2b99590d",
+          "metadataHash": "8a987df185f084f2"
+        },
+        {
+          "accountId": "a",
+          "sourceClass": "XI-A",
+          "course": null,
+          "type": "other",
+          "title": "PRESENSI (Group XI E)",
+          "status": null,
+          "availableFrom": null,
+          "dueAt": null,
+          "url": "https://elearning.sma1klaten.sch.id/mod/attendance/view.php?id=18256",
+          "fingerprint": "b29bcab290a8f53a",
+          "metadataHash": "4fdea2e73433f1cd"
+        }
+      ],
+      "meta": {
+        "failStreak": 0,
+        "lastSuccessAt": "2026-09-08T00:53:07.170Z"
+      }
+    }
+  },
+  "meta": {}
+}
